@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+  <metadata>
+    <id>MsQuic.Native</id>
+    <version>$version$</version>
+    <title>MsQuic Native Libraries</title>
+    <authors>Microsoft</authors>
+    <owners>Your Organization</owners>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <license type="expression">MIT</license>
+    <projectUrl>https://github.com/microsoft/msquic</projectUrl>
+    <iconUrl>https://raw.githubusercontent.com/microsoft/msquic/main/docs/images/msquic.png</iconUrl>
+    <description>Native MsQuic libraries for Windows, Linux, and macOS. MsQuic is a Microsoft implementation of the IETF QUIC protocol.</description>
+    <releaseNotes>Multi-platform native MsQuic libraries packaged for easy distribution.</releaseNotes>
+    <copyright>Copyright (c) Microsoft Corporation</copyright>
+    <tags>QUIC MsQuic Native Network Protocol Transport</tags>
+    <repository type="git" url="https://github.com/microsoft/msquic.git" />
+    <dependencies>
+      <group targetFramework=".NETStandard2.0" />
+      <group targetFramework=".NETFramework4.6.2" />
+      <group targetFramework="net6.0" />
+      <group targetFramework="net8.0" />
+    </dependencies>
+  </metadata>
+  <files>
+    <!-- Headers -->
+    <file src="package/build/native/include/**/*.h" target="build/native/include" />
+    
+    <!-- Build props and targets -->
+    <file src="MsQuic.Native.props" target="build/native" />
+    <file src="MsQuic.Native.targets" target="build/native" />
+    
+    <!-- Windows x64 -->
+    <file src="package/runtimes/win-x64/native/*.dll" target="runtimes/win-x64/native" />
+    <file src="package/runtimes/win-x64/native/*.lib" target="runtimes/win-x64/native" />
+    
+    <!-- Windows x86 -->
+    <file src="package/runtimes/win-x86/native/*.dll" target="runtimes/win-x86/native" />
+    <file src="package/runtimes/win-x86/native/*.lib" target="runtimes/win-x86/native" />
+    
+    <!-- Windows ARM64 -->
+    <file src="package/runtimes/win-arm64/native/*.dll" target="runtimes/win-arm64/native" />
+    <file src="package/runtimes/win-arm64/native/*.lib" target="runtimes/win-arm64/native" />
+    
+    <!-- Linux x64 -->
+    <file src="package/runtimes/linux-x64/native/*.so*" target="runtimes/linux-x64/native" />
+    <file src="package/runtimes/linux-x64/native/*.a" target="runtimes/linux-x64/native" />
+    
+    <!-- Linux ARM64 -->
+    <file src="package/runtimes/linux-arm64/native/*.so*" target="runtimes/linux-arm64/native" />
+    <file src="package/runtimes/linux-arm64/native/*.a" target="runtimes/linux-arm64/native" />
+    
+    <!-- macOS x64 -->
+    <file src="package/runtimes/osx-x64/native/*.dylib" target="runtimes/osx-x64/native" />
+    <file src="package/runtimes/osx-x64/native/*.a" target="runtimes/osx-x64/native" />
+    
+    <!-- macOS ARM64 -->
+    <file src="package/runtimes/osx-arm64/native/*.dylib" target="runtimes/osx-arm64/native" />
+    <file src="package/runtimes/osx-arm64/native/*.a" target="runtimes/osx-arm64/native" />
+  </files>
+</package>

@@ -1,0 +1,165 @@
+name: Build MsQuic NuGet Package
+
+on:
+  workflow_dispatch:
+    inputs:
+      msquic_branch:
+        description: 'MsQuic branch to build from'
+        required: true
+        default: 'main'
+      package_version:
+        description: 'NuGet package version'
+        required: true
+        default: '1.0.0'
+      prerelease_tag:
+        description: 'Prerelease tag (e.g., alpha, beta, leave empty for stable)'
+        required: false
+        default: ''
+
+env:
+  MSQUIC_REPO: https://github.com/microsoft/msquic
+  BUILD_CONFIG: Release
+
+jobs:
+  build-macos-x64:
+    runs-on: macos-15-large
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Clone MsQuic
+        run: |
+          git clone --recursive -b ${{ github.event.inputs.msquic_branch }} ${{ env.MSQUIC_REPO }} msquic-src
+
+      - name: Install dependencies
+        run: |
+          brew install cmake ninja
+
+      - name: Build MsQuic x64
+        working-directory: msquic-src
+        run: |
+          ./build.sh -Config ${{ env.BUILD_CONFIG }} -Arch x64
+
+      - name: Prepare artifacts
+        run: |
+          mkdir -p artifacts/osx/x64
+          cp msquic-src/artifacts/bin/macos/x64_${{ env.BUILD_CONFIG }}/*.dylib artifacts/osx/x64/ || true
+          cp msquic-src/artifacts/bin/macos/x64_${{ env.BUILD_CONFIG }}/*.a artifacts/osx/x64/ || true
+
+      - name: Upload x64 artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: osx-x64
+          path: artifacts/osx/x64
+
+  build-macos-arm64:
+    runs-on: macos-15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Clone MsQuic
+        run: |
+          git clone --recursive -b ${{ github.event.inputs.msquic_branch }} ${{ env.MSQUIC_REPO }} msquic-src
+
+      - name: Install dependencies
+        run: |
+          brew install cmake ninja
+
+      - name: Build MsQuic ARM64
+        working-directory: msquic-src
+        run: |
+          ./build.sh -Config ${{ env.BUILD_CONFIG }} -Arch arm64
+
+      - name: Prepare artifacts
+        run: |
+          mkdir -p artifacts/osx/arm64
+          cp msquic-src/artifacts/bin/macos/arm64_${{ env.BUILD_CONFIG }}/*.dylib artifacts/osx/arm64/ || true
+          cp msquic-src/artifacts/bin/macos/arm64_${{ env.BUILD_CONFIG }}/*.a artifacts/osx/arm64/ || true
+
+      - name: Upload ARM64 artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: osx-arm64
+          path: artifacts/osx/arm64
+
+  create-nuget:
+    needs: [build-macos-x64, build-macos-arm64]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Clone MsQuic for headers
+        run: |
+          git clone --recursive -b ${{ github.event.inputs.msquic_branch }} ${{ env.MSQUIC_REPO }} msquic-src --depth 1
+
+      - name: Organize artifacts
+        run: |
+          mkdir -p package/runtimes
+          mkdir -p package/build/native/include
+          
+          # Copy headers
+          cp -r msquic-src/src/inc/* package/build/native/include/
+          
+          # macOS binaries
+          for arch in x64 arm64; do
+            if [ -d "artifacts/osx-$arch" ]; then
+              case $arch in
+                x64) rid="osx-x64" ;;
+                arm64) rid="osx-arm64" ;;
+              esac
+              mkdir -p package/runtimes/$rid/native
+              cp artifacts/osx-$arch/*.dylib package/runtimes/$rid/native/ 2>/dev/null || true
+              cp artifacts/osx-$arch/*.a package/runtimes/$rid/native/ 2>/dev/null || true
+            fi
+          done
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Create NuGet package
+        run: |
+          # Generate version string
+          VERSION="${{ github.event.inputs.package_version }}"
+          if [ -n "${{ github.event.inputs.prerelease_tag }}" ]; then
+            VERSION="$VERSION-${{ github.event.inputs.prerelease_tag }}"
+          fi
+          
+          # Pack the NuGet package
+          dotnet pack MsQuic.Native.nuspec -p:Version=$VERSION -o nupkg
+
+      - name: Upload NuGet package
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-package
+          path: nupkg/*.nupkg
+
+      - name: Create Release
+        if: github.event_name == 'workflow_dispatch'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ github.event.inputs.package_version }}
+          name: MsQuic Native v${{ github.event.inputs.package_version }}
+          body: |
+            MsQuic native libraries packaged for NuGet
+            
+            **MsQuic Branch:** ${{ github.event.inputs.msquic_branch }}
+            **Package Version:** ${{ github.event.inputs.package_version }}${{ github.event.inputs.prerelease_tag && format('-{0}', github.event.inputs.prerelease_tag) || '' }}
+            
+            **Supported Platforms:**
+            - Windows (x64, x86, ARM64)
+            - Linux (x64, ARM64)
+            - macOS (x64, ARM64)
+          files: nupkg/*.nupkg
+          draft: false
+          prerelease: ${{ github.event.inputs.prerelease_tag != '' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

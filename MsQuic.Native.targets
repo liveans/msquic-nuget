@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!-- Windows Platform -->
+  <ItemGroup Condition="'$(OS)' == 'Windows_NT' And '$(MsQuicPlatform)' == 'x64'">
+    <Reference Include="msquic">
+      <HintPath>$(MSBuildThisFileDirectory)..\..\runtimes\win-x64\native\msquic.dll</HintPath>
+    </Reference>
+    <None Include="$(MSBuildThisFileDirectory)..\..\runtimes\win-x64\native\msquic.dll">
+      <Link>msquic.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(OS)' == 'Windows_NT' And '$(MsQuicPlatform)' == 'x86'">
+    <Reference Include="msquic">
+      <HintPath>$(MSBuildThisFileDirectory)..\..\runtimes\win-x86\native\msquic.dll</HintPath>
+    </Reference>
+    <None Include="$(MSBuildThisFileDirectory)..\..\runtimes\win-x86\native\msquic.dll">
+      <Link>msquic.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(OS)' == 'Windows_NT' And '$(MsQuicPlatform)' == 'arm64'">
+    <Reference Include="msquic">
+      <HintPath>$(MSBuildThisFileDirectory)..\..\runtimes\win-arm64\native\msquic.dll</HintPath>
+    </Reference>
+    <None Include="$(MSBuildThisFileDirectory)..\..\runtimes\win-arm64\native\msquic.dll">
+      <Link>msquic.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <!-- Link libraries for C++ projects on Windows -->
+  <ItemDefinitionGroup Condition="'$(OS)' == 'Windows_NT'">
+    <Link>
+      <AdditionalDependencies Condition="'$(MsQuicPlatform)' == 'x64'">$(MSBuildThisFileDirectory)..\..\runtimes\win-x64\native\msquic.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies Condition="'$(MsQuicPlatform)' == 'x86'">$(MSBuildThisFileDirectory)..\..\runtimes\win-x86\native\msquic.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies Condition="'$(MsQuicPlatform)' == 'arm64'">$(MSBuildThisFileDirectory)..\..\runtimes\win-arm64\native\msquic.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+
+  <!-- Runtime ID Resolution for .NET Core/5+ -->
+  <PropertyGroup Condition="'$(TargetFramework)' != '' And '$(RuntimeIdentifier)' == ''">
+    <RuntimeIdentifier Condition="'$(OS)' == 'Windows_NT' And '$(MsQuicPlatform)' == 'x64'">win-x64</RuntimeIdentifier>
+    <RuntimeIdentifier Condition="'$(OS)' == 'Windows_NT' And '$(MsQuicPlatform)' == 'x86'">win-x86</RuntimeIdentifier>
+    <RuntimeIdentifier Condition="'$(OS)' == 'Windows_NT' And '$(MsQuicPlatform)' == 'arm64'">win-arm64</RuntimeIdentifier>
+    <RuntimeIdentifier Condition="$([MSBuild]::IsOSPlatform('Linux')) And '$(MsQuicPlatform)' == 'x64'">linux-x64</RuntimeIdentifier>
+    <RuntimeIdentifier Condition="$([MSBuild]::IsOSPlatform('Linux')) And '$(MsQuicPlatform)' == 'arm64'">linux-arm64</RuntimeIdentifier>
+    <RuntimeIdentifier Condition="$([MSBuild]::IsOSPlatform('OSX')) And '$(MsQuicPlatform)' == 'x64'">osx-x64</RuntimeIdentifier>
+    <RuntimeIdentifier Condition="$([MSBuild]::IsOSPlatform('OSX')) And '$(MsQuicPlatform)' == 'arm64'">osx-arm64</RuntimeIdentifier>
+  </PropertyGroup>
+</Project>

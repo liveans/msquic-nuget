@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <MsQuicNativeRoot>$(MSBuildThisFileDirectory)</MsQuicNativeRoot>
+    <MsQuicIncludePath>$(MsQuicNativeRoot)include</MsQuicIncludePath>
+  </PropertyGroup>
+
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(MsQuicIncludePath);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
+
+  <PropertyGroup Condition="'$(Platform)' == 'x64' Or '$(Platform)' == 'AnyCPU'">
+    <MsQuicPlatform>x64</MsQuicPlatform>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Platform)' == 'x86' Or '$(Platform)' == 'Win32'">
+    <MsQuicPlatform>x86</MsQuicPlatform>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Platform)' == 'ARM64'">
+    <MsQuicPlatform>arm64</MsQuicPlatform>
+  </PropertyGroup>
+</Project>
