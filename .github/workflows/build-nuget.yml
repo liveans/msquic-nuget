@@ -27,30 +27,61 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Generate cache key
+        id: cache-key
+        run: |
+          # Get the latest commit hash from the target branch
+          COMMIT_HASH=$(git ls-remote ${{ env.MSQUIC_REPO }} refs/heads/${{ github.event.inputs.msquic_branch }} | cut -f1 | head -c 8)
+          echo "commit-hash=$COMMIT_HASH" >> $GITHUB_OUTPUT
+          echo "cache-key=msquic-macos-x64-${{ github.event.inputs.msquic_branch }}-${COMMIT_HASH}-${{ env.BUILD_CONFIG }}-quictls" >> $GITHUB_OUTPUT
+
+      - name: Cache build artifacts
+        id: cache-artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            msquic-src/artifacts
+          key: ${{ steps.cache-key.outputs.cache-key }}
+          restore-keys: |
+            msquic-macos-x64-${{ github.event.inputs.msquic_branch }}-
+
       - name: Clone MsQuic
+        if: steps.cache-artifacts.outputs.cache-hit != 'true'
         run: |
           git clone --recursive -b ${{ github.event.inputs.msquic_branch }} ${{ env.MSQUIC_REPO }} msquic-src
 
       - name: Install dependencies
+        if: steps.cache-artifacts.outputs.cache-hit != 'true'
         run: |
-          brew install cmake ninja
+          brew install cmake ninja powershell
+
+      - name: Setup build environment
+        if: steps.cache-artifacts.outputs.cache-hit != 'true'
+        run: |
+          echo "MACOSX_DEPLOYMENT_TARGET=13.0" >> $GITHUB_ENV
+          echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> $GITHUB_ENV
+          echo "CFLAGS=-isysroot $(xcrun --sdk macosx --show-sdk-path) -mmacosx-version-min=13.0" >> $GITHUB_ENV
+          echo "CXXFLAGS=-isysroot $(xcrun --sdk macosx --show-sdk-path) -mmacosx-version-min=13.0" >> $GITHUB_ENV
 
       - name: Build MsQuic x64
+        if: steps.cache-artifacts.outputs.cache-hit != 'true'
         working-directory: msquic-src
         run: |
-          ./build.sh -Config ${{ env.BUILD_CONFIG }} -Arch x64
+          pwsh ./scripts/build.ps1 -Config ${{ env.BUILD_CONFIG }} -Arch x64 -Platform macos -Tls quictls -ExtraArtifactDir _quictls
 
-      - name: Prepare artifacts
+      - name: List all artifacts
         run: |
-          mkdir -p artifacts/osx/x64
-          cp msquic-src/artifacts/bin/macos/x64_${{ env.BUILD_CONFIG }}/*.dylib artifacts/osx/x64/ || true
-          cp msquic-src/artifacts/bin/macos/x64_${{ env.BUILD_CONFIG }}/*.a artifacts/osx/x64/ || true
-
+          echo "=== Full artifacts directory tree ==="
+          find msquic-src/artifacts -type f | head -50 || echo "No artifacts found"
+          echo ""
+          echo "=== Directory structure ==="
+          find msquic-src/artifacts -type d | head -20 || echo "No directories found"
+      
       - name: Upload x64 artifacts
         uses: actions/upload-artifact@v4
         with:
           name: osx-x64
-          path: artifacts/osx/x64
+          path: msquic-src/artifacts
 
   build-macos-arm64:
     runs-on: macos-15
@@ -58,33 +89,65 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Generate cache key
+        id: cache-key
+        run: |
+          # Get the latest commit hash from the target branch
+          COMMIT_HASH=$(git ls-remote ${{ env.MSQUIC_REPO }} refs/heads/${{ github.event.inputs.msquic_branch }} | cut -f1 | head -c 8)
+          echo "commit-hash=$COMMIT_HASH" >> $GITHUB_OUTPUT
+          echo "cache-key=msquic-macos-arm64-${{ github.event.inputs.msquic_branch }}-${COMMIT_HASH}-${{ env.BUILD_CONFIG }}-quictls" >> $GITHUB_OUTPUT
+
+      - name: Cache build artifacts
+        id: cache-artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            msquic-src/artifacts
+          key: ${{ steps.cache-key.outputs.cache-key }}
+          restore-keys: |
+            msquic-macos-arm64-${{ github.event.inputs.msquic_branch }}-
+
       - name: Clone MsQuic
+        if: steps.cache-artifacts.outputs.cache-hit != 'true'
         run: |
           git clone --recursive -b ${{ github.event.inputs.msquic_branch }} ${{ env.MSQUIC_REPO }} msquic-src
 
       - name: Install dependencies
+        if: steps.cache-artifacts.outputs.cache-hit != 'true'
         run: |
-          brew install cmake ninja
+          brew install cmake ninja powershell
+
+      - name: Setup build environment
+        if: steps.cache-artifacts.outputs.cache-hit != 'true'
+        run: |
+          echo "MACOSX_DEPLOYMENT_TARGET=13.0" >> $GITHUB_ENV
+          echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> $GITHUB_ENV
+          echo "CFLAGS=-isysroot $(xcrun --sdk macosx --show-sdk-path) -mmacosx-version-min=13.0" >> $GITHUB_ENV
+          echo "CXXFLAGS=-isysroot $(xcrun --sdk macosx --show-sdk-path) -mmacosx-version-min=13.0" >> $GITHUB_ENV
 
       - name: Build MsQuic ARM64
+        if: steps.cache-artifacts.outputs.cache-hit != 'true'
         working-directory: msquic-src
         run: |
-          ./build.sh -Config ${{ env.BUILD_CONFIG }} -Arch arm64
+          pwsh ./scripts/build.ps1 -Config ${{ env.BUILD_CONFIG }} -Arch arm64 -Platform macos -Tls quictls -ExtraArtifactDir _quictls
 
-      - name: Prepare artifacts
+      - name: List all artifacts  
         run: |
-          mkdir -p artifacts/osx/arm64
-          cp msquic-src/artifacts/bin/macos/arm64_${{ env.BUILD_CONFIG }}/*.dylib artifacts/osx/arm64/ || true
-          cp msquic-src/artifacts/bin/macos/arm64_${{ env.BUILD_CONFIG }}/*.a artifacts/osx/arm64/ || true
-
+          echo "=== Full artifacts directory tree ==="
+          find msquic-src/artifacts -type f | head -50 || echo "No artifacts found"
+          echo ""
+          echo "=== Directory structure ==="
+          find msquic-src/artifacts -type d | head -20 || echo "No directories found"
+      
       - name: Upload ARM64 artifacts
         uses: actions/upload-artifact@v4
         with:
           name: osx-arm64
-          path: artifacts/osx/arm64
+          path: msquic-src/artifacts
 
   create-nuget:
     needs: [build-macos-x64, build-macos-arm64]
+    if: ${{ always() && (needs.build-macos-x64.result == 'success' || needs.build-macos-arm64.result == 'success') }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -94,36 +157,48 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: artifacts
-
-      - name: Clone MsQuic for headers
+        continue-on-error: true
+      
+      - name: Check downloaded artifacts
         run: |
-          git clone --recursive -b ${{ github.event.inputs.msquic_branch }} ${{ env.MSQUIC_REPO }} msquic-src --depth 1
+          echo "=== Full downloaded artifacts tree ==="
+          find artifacts -type f -name "*.dylib" -o -name "*.a" | head -50
+          echo ""
+          echo "=== All directories ==="
+          find artifacts -type d | head -30
 
       - name: Organize artifacts
         run: |
           mkdir -p package/runtimes
-          mkdir -p package/build/native/include
           
-          # Copy headers
-          cp -r msquic-src/src/inc/* package/build/native/include/
+          # Find and copy macOS binaries from the complete artifacts structure
+          echo "Looking for library files in downloaded artifacts..."
           
-          # macOS binaries
-          for arch in x64 arm64; do
-            if [ -d "artifacts/osx-$arch" ]; then
-              case $arch in
-                x64) rid="osx-x64" ;;
-                arm64) rid="osx-arm64" ;;
-              esac
-              mkdir -p package/runtimes/$rid/native
-              cp artifacts/osx-$arch/*.dylib package/runtimes/$rid/native/ 2>/dev/null || true
-              cp artifacts/osx-$arch/*.a package/runtimes/$rid/native/ 2>/dev/null || true
-            fi
-          done
+          # x64 artifacts
+          echo "Processing x64 artifacts..."
+          mkdir -p package/runtimes/osx-x64/native
+          find artifacts/osx-x64 -name "*.dylib" -exec cp {} package/runtimes/osx-x64/native/ \; 2>/dev/null && echo "Found x64 .dylib files" || echo "No x64 .dylib files"
+          find artifacts/osx-x64 -name "*.a" -exec cp {} package/runtimes/osx-x64/native/ \; 2>/dev/null && echo "Found x64 .a files" || echo "No x64 .a files"
+          
+          # arm64 artifacts  
+          echo "Processing arm64 artifacts..."
+          mkdir -p package/runtimes/osx-arm64/native
+          find artifacts/osx-arm64 -name "*.dylib" -exec cp {} package/runtimes/osx-arm64/native/ \; 2>/dev/null && echo "Found arm64 .dylib files" || echo "No arm64 .dylib files"
+          find artifacts/osx-arm64 -name "*.a" -exec cp {} package/runtimes/osx-arm64/native/ \; 2>/dev/null && echo "Found arm64 .a files" || echo "No arm64 .a files"
+          
+          echo ""
+          echo "Final package structure:"
+          find package -type f | head -20
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+      - name: Install Mono (for NuGet.exe)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mono-complete
+
+      - name: Setup NuGet
+        uses: nuget/setup-nuget@v2
         with:
-          dotnet-version: '8.0.x'
+          nuget-version: 'latest'
 
       - name: Create NuGet package
         run: |
@@ -133,8 +208,12 @@ jobs:
             VERSION="$VERSION-${{ github.event.inputs.prerelease_tag }}"
           fi
           
-          # Pack the NuGet package
-          dotnet pack MsQuic.Native.nuspec -p:Version=$VERSION -o nupkg
+          # Find the actual nuget.exe file
+          NUGET_EXE=$(find /opt/hostedtoolcache/nuget.exe -name "nuget.exe" -type f | head -1)
+          echo "Found NuGet.exe at: $NUGET_EXE"
+          
+          # Pack the NuGet package using nuget.exe with mono
+          mono "$NUGET_EXE" pack MsQuic.Native.nuspec -Version $VERSION -OutputDirectory nupkg -NoDefaultExcludes
 
       - name: Upload NuGet package
         uses: actions/upload-artifact@v4
