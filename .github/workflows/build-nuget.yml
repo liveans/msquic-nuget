@@ -48,6 +48,7 @@ jobs:
       - name: Clone MsQuic
         if: steps.cache-artifacts.outputs.cache-hit != 'true'
         run: |
+          rm -rf msquic-src
           git clone --recursive -b ${{ github.event.inputs.msquic_branch }} ${{ env.MSQUIC_REPO }} msquic-src
 
       - name: Install dependencies
@@ -110,6 +111,7 @@ jobs:
       - name: Clone MsQuic
         if: steps.cache-artifacts.outputs.cache-hit != 'true'
         run: |
+          rm -rf msquic-src
           git clone --recursive -b ${{ github.event.inputs.msquic_branch }} ${{ env.MSQUIC_REPO }} msquic-src
 
       - name: Install dependencies
