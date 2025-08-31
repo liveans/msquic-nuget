@@ -370,10 +370,11 @@ jobs:
 
       - name: Create Release
         if: github.event_name == 'workflow_dispatch'
-        uses: softprops/action-gh-release@v1
+        uses: actions/create-release@v1
+        id: create_release
         with:
           tag_name: v${{ github.event.inputs.package_version }}
-          name: MsQuic Native v${{ github.event.inputs.package_version }}
+          release_name: MsQuic Native v${{ github.event.inputs.package_version }}
           body: |
             MsQuic native libraries packaged for NuGet
             
@@ -384,8 +385,24 @@ jobs:
             - Windows (x64, x86, ARM64)
             - Linux (x64, ARM64)
             - macOS (x64, ARM64)
-          files: nupkg/*.nupkg
           draft: false
           prerelease: ${{ github.event.inputs.prerelease_tag != '' }}
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Get package file path
+        id: package_path
+        run: |
+          PACKAGE_FILE=$(ls ./nupkg/*.nupkg | head -1)
+          echo "package_file=$PACKAGE_FILE" >> $GITHUB_OUTPUT
+          echo "package_name=$(basename "$PACKAGE_FILE")" >> $GITHUB_OUTPUT
+      
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ${{ steps.package_path.outputs.package_file }}
+          asset_name: ${{ steps.package_path.outputs.package_name }}
+          asset_content_type: application/zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
