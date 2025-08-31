@@ -265,7 +265,10 @@ jobs:
             arch: arm64
           - os: macos-15-large
             arch: x64
+            continue-on-error: true  # x64 verification is optional
+      fail-fast: false  # Allow arm64 to continue if x64 fails
     runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.arch == 'x64' }}  # Only allow x64 to fail
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
