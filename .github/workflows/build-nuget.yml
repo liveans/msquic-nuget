@@ -31,7 +31,7 @@ jobs:
       matrix:
         include:
           - arch: x64
-            runner: macos-15-large
+            runner: macos-13
           - arch: arm64
             runner: macos-15
       fail-fast: false  # Allow other matrix jobs to continue if one fails
@@ -259,11 +259,11 @@ jobs:
     if: needs.create-nuget.result == 'success'
     strategy:
       matrix:
-        os: [macos-15, macos-15-large]  # Test on both ARM64 and x64 runners
+        os: [macos-15, macos-13]  # Test on both ARM64 and x64 runners
         include:
           - os: macos-15
             arch: arm64
-          - os: macos-15-large
+          - os: macos-13
             arch: x64
             continue-on-error: true  # x64 verification is optional
       fail-fast: false  # Allow arm64 to continue if x64 fails
