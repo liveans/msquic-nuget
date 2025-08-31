@@ -15,14 +15,28 @@ on:
         description: 'Prerelease tag (e.g., alpha, beta, leave empty for stable)'
         required: false
         default: ''
+      use_system_openssl:
+        description: 'Use system crypto instead of bundling it'
+        type: boolean
+        required: false
+        default: false
 
 env:
   MSQUIC_REPO: https://github.com/microsoft/msquic
   BUILD_CONFIG: Release
 
 jobs:
-  build-macos-x64:
-    runs-on: macos-15-large
+  build-macos:
+    strategy:
+      matrix:
+        include:
+          - arch: x64
+            runner: macos-15-large
+          - arch: arm64
+            runner: macos-15
+      fail-fast: false  # Allow other matrix jobs to continue if one fails
+    runs-on: ${{ matrix.runner }}
+    continue-on-error: true  # Don't mark this job as failed if any matrix run fails
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -33,7 +47,7 @@ jobs:
           # Get the latest commit hash from the target branch
           COMMIT_HASH=$(git ls-remote ${{ env.MSQUIC_REPO }} refs/heads/${{ github.event.inputs.msquic_branch }} | cut -f1 | head -c 8)
           echo "commit-hash=$COMMIT_HASH" >> $GITHUB_OUTPUT
-          echo "cache-key=msquic-macos-x64-${{ github.event.inputs.msquic_branch }}-${COMMIT_HASH}-${{ env.BUILD_CONFIG }}-quictls" >> $GITHUB_OUTPUT
+          echo "cache-key=msquic-macos-${{ matrix.arch }}-${{ github.event.inputs.msquic_branch }}-${COMMIT_HASH}-${{ env.BUILD_CONFIG }}-quictls" >> $GITHUB_OUTPUT
 
       - name: Cache build artifacts
         id: cache-artifacts
@@ -43,7 +57,7 @@ jobs:
             msquic-src/artifacts
           key: ${{ steps.cache-key.outputs.cache-key }}
           restore-keys: |
-            msquic-macos-x64-${{ github.event.inputs.msquic_branch }}-
+            msquic-macos-${{ matrix.arch }}-${{ github.event.inputs.msquic_branch }}-
 
       - name: Clone MsQuic
         if: steps.cache-artifacts.outputs.cache-hit != 'true'
@@ -86,11 +100,15 @@ jobs:
           echo "CFLAGS=-isysroot $(xcrun --sdk macosx --show-sdk-path) -mmacosx-version-min=13.0" >> $GITHUB_ENV
           echo "CXXFLAGS=-isysroot $(xcrun --sdk macosx --show-sdk-path) -mmacosx-version-min=13.0" >> $GITHUB_ENV
 
-      - name: Build MsQuic x64
+      - name: Build MsQuic ${{ matrix.arch }}
         if: steps.cache-artifacts.outputs.cache-hit != 'true'
         working-directory: msquic-src
         run: |
-          pwsh ./scripts/build.ps1 -Config ${{ env.BUILD_CONFIG }} -Arch x64 -Platform macos -Tls quictls -ExtraArtifactDir _quictls
+          if [ "${{ github.event.inputs.use_system_openssl }}" == "true" ]; then
+            pwsh ./scripts/build.ps1 -Config ${{ env.BUILD_CONFIG }} -Arch ${{ matrix.arch }} -Platform macos -Tls quictls -ExtraArtifactDir _quictls -UseSystemOpenSSLCrypto
+          else
+            pwsh ./scripts/build.ps1 -Config ${{ env.BUILD_CONFIG }} -Arch ${{ matrix.arch }} -Platform macos -Tls quictls -ExtraArtifactDir _quictls
+          fi
 
       - name: List all artifacts
         run: |
@@ -100,100 +118,15 @@ jobs:
           echo "=== Directory structure ==="
           find msquic-src/artifacts -type d | head -20 || echo "No directories found"
       
-      - name: Upload x64 artifacts
+      - name: Upload ${{ matrix.arch }} artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: osx-x64
-          path: msquic-src/artifacts
-
-  build-macos-arm64:
-    runs-on: macos-15
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Generate cache key
-        id: cache-key
-        run: |
-          # Get the latest commit hash from the target branch
-          COMMIT_HASH=$(git ls-remote ${{ env.MSQUIC_REPO }} refs/heads/${{ github.event.inputs.msquic_branch }} | cut -f1 | head -c 8)
-          echo "commit-hash=$COMMIT_HASH" >> $GITHUB_OUTPUT
-          echo "cache-key=msquic-macos-arm64-${{ github.event.inputs.msquic_branch }}-${COMMIT_HASH}-${{ env.BUILD_CONFIG }}-quictls" >> $GITHUB_OUTPUT
-
-      - name: Cache build artifacts
-        id: cache-artifacts
-        uses: actions/cache@v4
-        with:
-          path: |
-            msquic-src/artifacts
-          key: ${{ steps.cache-key.outputs.cache-key }}
-          restore-keys: |
-            msquic-macos-arm64-${{ github.event.inputs.msquic_branch }}-
-
-      - name: Clone MsQuic
-        if: steps.cache-artifacts.outputs.cache-hit != 'true'
-        run: |
-          rm -rf msquic-src
-          git clone --recursive -b ${{ github.event.inputs.msquic_branch }} ${{ env.MSQUIC_REPO }} msquic-src
-
-      - name: Install dependencies
-        if: steps.cache-artifacts.outputs.cache-hit != 'true'
-        run: |
-          # Check and install cmake if not available
-          if ! command -v cmake &> /dev/null; then
-            echo "Installing cmake..."
-            brew install cmake
-          else
-            echo "cmake already installed: $(cmake --version)"
-          fi
-          
-          # Check and install ninja if not available
-          if ! command -v ninja &> /dev/null; then
-            echo "Installing ninja..."
-            brew install ninja
-          else
-            echo "ninja already installed: $(ninja --version)"
-          fi
-          
-          # Check and install powershell if not available
-          if ! command -v pwsh &> /dev/null; then
-            echo "Installing powershell..."
-            brew install powershell
-          else
-            echo "powershell already installed: $(pwsh --version)"
-          fi
-
-      - name: Setup build environment
-        if: steps.cache-artifacts.outputs.cache-hit != 'true'
-        run: |
-          echo "MACOSX_DEPLOYMENT_TARGET=13.0" >> $GITHUB_ENV
-          echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> $GITHUB_ENV
-          echo "CFLAGS=-isysroot $(xcrun --sdk macosx --show-sdk-path) -mmacosx-version-min=13.0" >> $GITHUB_ENV
-          echo "CXXFLAGS=-isysroot $(xcrun --sdk macosx --show-sdk-path) -mmacosx-version-min=13.0" >> $GITHUB_ENV
-
-      - name: Build MsQuic ARM64
-        if: steps.cache-artifacts.outputs.cache-hit != 'true'
-        working-directory: msquic-src
-        run: |
-          pwsh ./scripts/build.ps1 -Config ${{ env.BUILD_CONFIG }} -Arch arm64 -Platform macos -Tls quictls -ExtraArtifactDir _quictls
-
-      - name: List all artifacts  
-        run: |
-          echo "=== Full artifacts directory tree ==="
-          find msquic-src/artifacts -type f | head -50 || echo "No artifacts found"
-          echo ""
-          echo "=== Directory structure ==="
-          find msquic-src/artifacts -type d | head -20 || echo "No directories found"
-      
-      - name: Upload ARM64 artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: osx-arm64
+          name: osx-${{ matrix.arch }}
           path: msquic-src/artifacts
 
   create-nuget:
-    needs: [build-macos-x64, build-macos-arm64]
-    if: ${{ always() && (needs.build-macos-x64.result == 'success' || needs.build-macos-arm64.result == 'success') }}
+    needs: [build-macos]
+    if: ${{ always() && !cancelled() }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
