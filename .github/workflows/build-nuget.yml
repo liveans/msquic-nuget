@@ -177,18 +177,64 @@ jobs:
           # x64 artifacts
           echo "Processing x64 artifacts..."
           mkdir -p package/runtimes/osx-x64/native
-          find artifacts/osx-x64 -name "*.dylib" -exec cp {} package/runtimes/osx-x64/native/ \; 2>/dev/null && echo "Found x64 .dylib files" || echo "No x64 .dylib files"
-          find artifacts/osx-x64 -name "*.a" -exec cp {} package/runtimes/osx-x64/native/ \; 2>/dev/null && echo "Found x64 .a files" || echo "No x64 .a files"
+          
+          # Find the actual bin directory for x64 artifacts
+          X64_BIN_DIR=$(find artifacts/osx-x64 -path "*/bin/macos/x64_Release*" -type d | head -1)
+          if [ -n "$X64_BIN_DIR" ]; then
+            echo "Found x64 bin directory: $X64_BIN_DIR"
+            # Copy with symlinks preserved (-P flag)
+            cp -P "$X64_BIN_DIR"/libmsquic*.dylib package/runtimes/osx-x64/native/ 2>/dev/null && echo "Copied x64 dylib files" || echo "No x64 dylib files"
+            cp "$X64_BIN_DIR"/libmsquic*.a package/runtimes/osx-x64/native/ 2>/dev/null && echo "Copied x64 static libraries" || echo "No x64 static libraries"
+          else
+            echo "No x64 bin directory found"
+          fi
           
           # arm64 artifacts  
           echo "Processing arm64 artifacts..."
           mkdir -p package/runtimes/osx-arm64/native
-          find artifacts/osx-arm64 -name "*.dylib" -exec cp {} package/runtimes/osx-arm64/native/ \; 2>/dev/null && echo "Found arm64 .dylib files" || echo "No arm64 .dylib files"
-          find artifacts/osx-arm64 -name "*.a" -exec cp {} package/runtimes/osx-arm64/native/ \; 2>/dev/null && echo "Found arm64 .a files" || echo "No arm64 .a files"
+          
+          # Find the actual bin directory for arm64 artifacts
+          ARM64_BIN_DIR=$(find artifacts/osx-arm64 -path "*/bin/macos/arm64_Release*" -type d | head -1)
+          if [ -n "$ARM64_BIN_DIR" ]; then
+            echo "Found arm64 bin directory: $ARM64_BIN_DIR"
+            # Copy with symlinks preserved (-P flag)
+            cp -P "$ARM64_BIN_DIR"/libmsquic*.dylib package/runtimes/osx-arm64/native/ 2>/dev/null && echo "Copied arm64 dylib files" || echo "No arm64 dylib files"
+            cp "$ARM64_BIN_DIR"/libmsquic*.a package/runtimes/osx-arm64/native/ 2>/dev/null && echo "Copied arm64 static libraries" || echo "No arm64 static libraries"
+          else
+            echo "No arm64 bin directory found"
+          fi
+          
+          # Recreate symlinks if they don't exist (artifact upload/download doesn't preserve symlinks)
+          echo "Recreating symlinks if needed..."
+          
+          # For x64
+          X64_VERSIONED_LIB=$(find package/runtimes/osx-x64/native/ -name "libmsquic.*.*.*.dylib" | head -1)
+          if [ -n "$X64_VERSIONED_LIB" ] && [ ! -L "package/runtimes/osx-x64/native/libmsquic.2.dylib" ]; then
+            cd package/runtimes/osx-x64/native/
+            VERSIONED_NAME=$(basename "$X64_VERSIONED_LIB")
+            ln -sf "$VERSIONED_NAME" libmsquic.2.dylib
+            ln -sf libmsquic.2.dylib libmsquic.dylib
+            cd - > /dev/null
+            echo "Created x64 symlinks for $VERSIONED_NAME"
+          fi
+          
+          # For arm64
+          ARM64_VERSIONED_LIB=$(find package/runtimes/osx-arm64/native/ -name "libmsquic.*.*.*.dylib" | head -1)
+          if [ -n "$ARM64_VERSIONED_LIB" ] && [ ! -L "package/runtimes/osx-arm64/native/libmsquic.2.dylib" ]; then
+            cd package/runtimes/osx-arm64/native/
+            VERSIONED_NAME=$(basename "$ARM64_VERSIONED_LIB")
+            ln -sf "$VERSIONED_NAME" libmsquic.2.dylib
+            ln -sf libmsquic.2.dylib libmsquic.dylib
+            cd - > /dev/null
+            echo "Created arm64 symlinks for $VERSIONED_NAME"
+          fi
           
           echo ""
           echo "Final package structure:"
-          find package -type f | head -20
+          find package -type f -o -type l | head -20
+          echo ""
+          echo "Verifying symlinks:"
+          find package -type l -exec ls -la {} \;
 
       - name: Install Mono (for NuGet.exe)
         run: |
@@ -214,12 +260,131 @@ jobs:
           
           # Pack the NuGet package using nuget.exe with mono
           mono "$NUGET_EXE" pack MsQuic.Native.nuspec -Version $VERSION -OutputDirectory nupkg -NoDefaultExcludes
+          
+          echo ""
+          echo "=== Generated NuGet package ==="
+          ls -la nupkg/
+          
+          echo ""
+          echo "=== Package contents ==="
+          unzip -l nupkg/*.nupkg | head -30
 
       - name: Upload NuGet package
         uses: actions/upload-artifact@v4
         with:
           name: nuget-package
           path: nupkg/*.nupkg
+
+  verify-package:
+    needs: [create-nuget]
+    if: needs.create-nuget.result == 'success'
+    strategy:
+      matrix:
+        os: [macos-15, macos-15-large]  # Test on both ARM64 and x64 runners
+        include:
+          - os: macos-15
+            arch: arm64
+          - os: macos-15-large
+            arch: x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'  # Use .NET 10 to match test project
+
+      - name: Download NuGet package
+        uses: actions/download-artifact@v4
+        with:
+          name: nuget-package
+          path: ./nupkg
+
+      - name: List downloaded package
+        run: |
+          echo "Downloaded NuGet package:"
+          ls -la ./nupkg/
+          
+          echo ""
+          echo "Package contents:"
+          unzip -l ./nupkg/*.nupkg | head -20
+
+      - name: Create test project
+        run: |
+          cd test-project/MsQuicTest
+          
+          # Extract version from the package filename
+          PACKAGE_FILE=$(ls ../../nupkg/*.nupkg | head -1)
+          PACKAGE_NAME=$(basename "$PACKAGE_FILE" .nupkg)
+          VERSION=$(echo "$PACKAGE_NAME" | sed 's/MsQuic.Native.//g')
+          
+          echo "Testing with package version: $VERSION"
+          
+          # Add the local NuGet package as source and install it
+          dotnet add package MsQuic.Native --version $VERSION --source "../../nupkg/"
+          
+          echo ""
+          echo "Updated project file:"
+          cat MsQuicTest.csproj
+
+      - name: Build test project
+        run: |
+          cd test-project/MsQuicTest
+          dotnet build -v minimal
+          
+          echo ""
+          echo "Checking runtime directory:"
+          find bin/Debug -name "*.dylib" -o -name "*.a" || echo "No native libraries found"
+
+      - name: Run verification test
+        id: test-result
+        run: |
+          cd test-project/MsQuicTest
+          
+          echo "Running MsQuic verification test..."
+          
+          # Capture both output and exit code
+          set +e  # Don't exit on error
+          OUTPUT=$(dotnet run 2>&1)
+          EXIT_CODE=$?
+          set -e  # Re-enable exit on error
+          
+          echo "$OUTPUT"
+          echo ""
+          echo "Exit code: $EXIT_CODE"
+          
+          # Check for success indicators in output
+          if echo "$OUTPUT" | grep -q "TEST_RESULT: SUCCESS"; then
+            echo "✅ Verification test passed!"
+            echo "test-passed=true" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Verification test failed!"
+            echo "test-passed=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.arch }}
+          path: test-project/MsQuicTest/bin/Debug/
+
+  create-release:
+    needs: [create-nuget, verify-package]
+    if: ${{ always() && needs.create-nuget.result == 'success' && needs.verify-package.result == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download NuGet package
+        uses: actions/download-artifact@v4
+        with:
+          name: nuget-package
+          path: ./nupkg
 
       - name: Create Release
         if: github.event_name == 'workflow_dispatch'
@@ -241,4 +406,4 @@ jobs:
           draft: false
           prerelease: ${{ github.event.inputs.prerelease_tag != '' }}
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}

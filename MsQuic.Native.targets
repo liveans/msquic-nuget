@@ -40,6 +40,21 @@
     </Link>
   </ItemDefinitionGroup>
 
+  <!-- macOS Platform -->
+  <ItemGroup Condition="$([MSBuild]::IsOSPlatform('OSX')) And '$(MsQuicPlatform)' == 'x64'">
+    <None Include="$(MSBuildThisFileDirectory)..\..\runtimes\osx-x64\native\libmsquic*.dylib">
+      <Link>%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup Condition="$([MSBuild]::IsOSPlatform('OSX')) And '$(MsQuicPlatform)' == 'arm64'">
+    <None Include="$(MSBuildThisFileDirectory)..\..\runtimes\osx-arm64\native\libmsquic*.dylib">
+      <Link>%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
   <!-- Runtime ID Resolution for .NET Core/5+ -->
   <PropertyGroup Condition="'$(TargetFramework)' != '' And '$(RuntimeIdentifier)' == ''">
     <RuntimeIdentifier Condition="'$(OS)' == 'Windows_NT' And '$(MsQuicPlatform)' == 'x64'">win-x64</RuntimeIdentifier>

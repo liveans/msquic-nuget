@@ -1,0 +1,223 @@
+# ==============================================
+# MsQuic NuGet Package Project .gitignore
+# ==============================================
+
+# === NuGet Packages ===
+*.nupkg
+*.snupkg
+nupkg/
+packages/
+
+# === Native Libraries & Binaries ===
+*.dll
+*.so
+*.dylib
+*.a
+*.lib
+*.pdb
+*.exe
+
+# === Build Artifacts ===
+package/
+artifacts/
+msquic-src/
+
+# === .NET Build Outputs ===
+bin/
+obj/
+out/
+publish/
+
+# === .NET Project Files (Generated) ===
+project.lock.json
+project.fragment.lock.json
+artifacts/
+**/Properties/launchSettings.json
+
+# === NuGet Cache ===
+**/packages/*
+# except build/, which is used as an MSBuild target.
+!**/packages/build/
+# Uncomment if necessary however generally it will be regenerated when needed
+#!**/packages/repositories.config
+# NuGet v3's project.json files produces more ignoreable files
+*.nuget.props
+*.nuget.targets
+
+# === Visual Studio / VS Code ===
+.vs/
+.vscode/
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# === Rider ===
+.idea/
+*.sln.iml
+
+# === Mono Auto Generated Files ===
+mono_crash.*
+
+# === Build Results ===
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+arm64/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# === Test Results ===
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+*.VisualState.xml
+TestResult.xml
+nunit-*.xml
+
+# === Coverage Reports ===
+*.coverage
+*.coveragexml
+coverage*.json
+coverage*.xml
+coverage*.info
+lcov.info
+
+# === Temporary Files ===
+*~
+*.tmp
+*.temp
+*.swp
+*.swo
+
+# === macOS ===
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# === Windows ===
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# === Linux ===
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# === Node.js (if used for tooling) ===
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# === Python (if used for tooling) ===
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# === Logs ===
+*.log
+logs/
+log/
+
+# === Cache directories ===
+.cache/
+.parcel-cache/
+.nuxt/
+.next/
+.gatsby/
+
+# === Environment variables ===
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.envrc
+
+# === JetBrains Rider ===
+.idea/
+*.sln.iml
+
+# === Azure Functions ===
+bin
+obj
+appsettings.json
+local.settings.json
+*.azurePubxml
+
+# === GitHub Codespaces ===
+.devcontainer/
+
+# === Archive files ===
+*.7z
+*.dmg
+*.gz
+*.iso
+*.jar
+*.rar
+*.tar
+*.zip
+
+# === Keep important files ===
+!.github/
+!test-project/
+!MsQuic.Native.nuspec
+!MsQuic.Native.props
+!MsQuic.Native.targets
+!README.md
+!LICENSE
