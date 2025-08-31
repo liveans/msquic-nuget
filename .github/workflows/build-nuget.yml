@@ -54,7 +54,29 @@ jobs:
       - name: Install dependencies
         if: steps.cache-artifacts.outputs.cache-hit != 'true'
         run: |
-          brew install cmake ninja powershell
+          # Check and install cmake if not available
+          if ! command -v cmake &> /dev/null; then
+            echo "Installing cmake..."
+            brew install cmake
+          else
+            echo "cmake already installed: $(cmake --version)"
+          fi
+          
+          # Check and install ninja if not available
+          if ! command -v ninja &> /dev/null; then
+            echo "Installing ninja..."
+            brew install ninja
+          else
+            echo "ninja already installed: $(ninja --version)"
+          fi
+          
+          # Check and install powershell if not available
+          if ! command -v pwsh &> /dev/null; then
+            echo "Installing powershell..."
+            brew install powershell
+          else
+            echo "powershell already installed: $(pwsh --version)"
+          fi
 
       - name: Setup build environment
         if: steps.cache-artifacts.outputs.cache-hit != 'true'
@@ -117,7 +139,29 @@ jobs:
       - name: Install dependencies
         if: steps.cache-artifacts.outputs.cache-hit != 'true'
         run: |
-          brew install cmake ninja powershell
+          # Check and install cmake if not available
+          if ! command -v cmake &> /dev/null; then
+            echo "Installing cmake..."
+            brew install cmake
+          else
+            echo "cmake already installed: $(cmake --version)"
+          fi
+          
+          # Check and install ninja if not available
+          if ! command -v ninja &> /dev/null; then
+            echo "Installing ninja..."
+            brew install ninja
+          else
+            echo "ninja already installed: $(ninja --version)"
+          fi
+          
+          # Check and install powershell if not available
+          if ! command -v pwsh &> /dev/null; then
+            echo "Installing powershell..."
+            brew install powershell
+          else
+            echo "powershell already installed: $(pwsh --version)"
+          fi
 
       - name: Setup build environment
         if: steps.cache-artifacts.outputs.cache-hit != 'true'
