@@ -80,7 +80,7 @@ jobs:
           else
             echo "cmake already installed: $(cmake --version)"
           fi
-          
+
           # Check and install ninja if not available
           if ! command -v ninja &> /dev/null; then
             echo "Installing ninja..."
@@ -88,7 +88,7 @@ jobs:
           else
             echo "ninja already installed: $(ninja --version)"
           fi
-          
+
           # Check and install powershell if not available
           if ! command -v pwsh &> /dev/null; then
             echo "Installing powershell..."
@@ -122,7 +122,7 @@ jobs:
           echo ""
           echo "=== Directory structure ==="
           find msquic-src/artifacts -type d | head -20 || echo "No directories found"
-      
+
       - name: Upload ${{ matrix.arch }} artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -142,7 +142,7 @@ jobs:
         with:
           path: artifacts
         continue-on-error: true
-      
+
       - name: Check downloaded artifacts
         run: |
           echo "=== Full downloaded artifacts tree ==="
@@ -154,65 +154,40 @@ jobs:
       - name: Organize artifacts
         run: |
           mkdir -p package/runtimes
-          
+
           # Find and copy macOS binaries from the complete artifacts structure
           echo "Looking for library files in downloaded artifacts..."
-          
+
           # x64 artifacts
           echo "Processing x64 artifacts..."
           mkdir -p package/runtimes/osx-x64/native
-          
+
           # Find the actual bin directory for x64 artifacts
           X64_BIN_DIR=$(find artifacts/osx-x64 -path "*/bin/macos/x64_Release*" -type d | head -1)
           if [ -n "$X64_BIN_DIR" ]; then
             echo "Found x64 bin directory: $X64_BIN_DIR"
             # Copy with symlinks preserved (-P flag)
-            cp -P "$X64_BIN_DIR"/libmsquic*.dylib package/runtimes/osx-x64/native/ 2>/dev/null && echo "Copied x64 dylib files" || echo "No x64 dylib files"
-            cp "$X64_BIN_DIR"/libmsquic*.a package/runtimes/osx-x64/native/ 2>/dev/null && echo "Copied x64 static libraries" || echo "No x64 static libraries"
+            cp -P "$X64_BIN_DIR"/libmsquic.dylib package/runtimes/osx-x64/native/ 2>/dev/null && echo "Copied x64 dylib files" || echo "No x64 dylib files"
+            cp "$X64_BIN_DIR"/libmsquic.a package/runtimes/osx-x64/native/ 2>/dev/null && echo "Copied x64 static libraries" || echo "No x64 static libraries"
           else
             echo "No x64 bin directory found"
           fi
-          
-          # arm64 artifacts  
+
+          # arm64 artifacts
           echo "Processing arm64 artifacts..."
           mkdir -p package/runtimes/osx-arm64/native
-          
+
           # Find the actual bin directory for arm64 artifacts
           ARM64_BIN_DIR=$(find artifacts/osx-arm64 -path "*/bin/macos/arm64_Release*" -type d | head -1)
           if [ -n "$ARM64_BIN_DIR" ]; then
             echo "Found arm64 bin directory: $ARM64_BIN_DIR"
             # Copy with symlinks preserved (-P flag)
-            cp -P "$ARM64_BIN_DIR"/libmsquic*.dylib package/runtimes/osx-arm64/native/ 2>/dev/null && echo "Copied arm64 dylib files" || echo "No arm64 dylib files"
-            cp "$ARM64_BIN_DIR"/libmsquic*.a package/runtimes/osx-arm64/native/ 2>/dev/null && echo "Copied arm64 static libraries" || echo "No arm64 static libraries"
+            cp -P "$ARM64_BIN_DIR"/libmsquic.dylib package/runtimes/osx-arm64/native/ 2>/dev/null && echo "Copied arm64 dylib files" || echo "No arm64 dylib files"
+            cp "$ARM64_BIN_DIR"/libmsquic.a package/runtimes/osx-arm64/native/ 2>/dev/null && echo "Copied arm64 static libraries" || echo "No arm64 static libraries"
           else
             echo "No arm64 bin directory found"
           fi
-          
-          # Recreate symlinks if they don't exist (artifact upload/download doesn't preserve symlinks)
-          echo "Recreating symlinks if needed..."
-          
-          # For x64
-          X64_VERSIONED_LIB=$(find package/runtimes/osx-x64/native/ -name "libmsquic.*.*.*.dylib" | head -1)
-          if [ -n "$X64_VERSIONED_LIB" ] && [ ! -L "package/runtimes/osx-x64/native/libmsquic.2.dylib" ]; then
-            cd package/runtimes/osx-x64/native/
-            VERSIONED_NAME=$(basename "$X64_VERSIONED_LIB")
-            ln -sf "$VERSIONED_NAME" libmsquic.2.dylib
-            ln -sf libmsquic.2.dylib libmsquic.dylib
-            cd - > /dev/null
-            echo "Created x64 symlinks for $VERSIONED_NAME"
-          fi
-          
-          # For arm64
-          ARM64_VERSIONED_LIB=$(find package/runtimes/osx-arm64/native/ -name "libmsquic.*.*.*.dylib" | head -1)
-          if [ -n "$ARM64_VERSIONED_LIB" ] && [ ! -L "package/runtimes/osx-arm64/native/libmsquic.2.dylib" ]; then
-            cd package/runtimes/osx-arm64/native/
-            VERSIONED_NAME=$(basename "$ARM64_VERSIONED_LIB")
-            ln -sf "$VERSIONED_NAME" libmsquic.2.dylib
-            ln -sf libmsquic.2.dylib libmsquic.dylib
-            cd - > /dev/null
-            echo "Created arm64 symlinks for $VERSIONED_NAME"
-          fi
-          
+
           echo ""
           echo "Final package structure:"
           find package -type f -o -type l | head -20
@@ -237,18 +212,18 @@ jobs:
           if [ -n "${{ github.event.inputs.prerelease_tag }}" ]; then
             VERSION="$VERSION-${{ github.event.inputs.prerelease_tag }}"
           fi
-          
+
           # Find the actual nuget.exe file
           NUGET_EXE=$(find /opt/hostedtoolcache/nuget.exe -name "nuget.exe" -type f | head -1)
           echo "Found NuGet.exe at: $NUGET_EXE"
-          
+
           # Pack the NuGet package using nuget.exe with mono
           mono "$NUGET_EXE" pack MsQuic.Native.nuspec -Version $VERSION -OutputDirectory nupkg -NoDefaultExcludes
-          
+
           echo ""
           echo "=== Generated NuGet package ==="
           ls -la nupkg/
-          
+
           echo ""
           echo "=== Package contents ==="
           unzip -l nupkg/*.nupkg | head -30
@@ -293,7 +268,7 @@ jobs:
         run: |
           echo "Downloaded NuGet package:"
           ls -la ./nupkg/
-          
+
           echo ""
           echo "Package contents:"
           unzip -l ./nupkg/*.nupkg | head -20
@@ -301,17 +276,17 @@ jobs:
       - name: Create test project
         run: |
           cd test-project/MsQuicTest
-          
+
           # Extract version from the package filename
           PACKAGE_FILE=$(ls ../../nupkg/*.nupkg | head -1)
           PACKAGE_NAME=$(basename "$PACKAGE_FILE" .nupkg)
           VERSION=$(echo "$PACKAGE_NAME" | sed 's/MsQuic.Native.//g')
-          
+
           echo "Testing with package version: $VERSION"
-          
+
           # Add the local NuGet package as source and install it
           dotnet add package MsQuic.Native --version $VERSION --source "../../nupkg/"
-          
+
           echo ""
           echo "Updated project file:"
           cat MsQuicTest.csproj
@@ -320,7 +295,7 @@ jobs:
         run: |
           cd test-project/MsQuicTest
           dotnet build -v minimal
-          
+
           echo ""
           echo "Checking runtime directory:"
           find bin/Debug -name "*.dylib" -o -name "*.a" || echo "No native libraries found"
@@ -329,19 +304,19 @@ jobs:
         id: test-result
         run: |
           cd test-project/MsQuicTest
-          
+
           echo "Running MsQuic verification test..."
-          
+
           # Capture both output and exit code
           set +e  # Don't exit on error
           OUTPUT=$(dotnet run 2>&1)
           EXIT_CODE=$?
           set -e  # Re-enable exit on error
-          
+
           echo "$OUTPUT"
           echo ""
           echo "Exit code: $EXIT_CODE"
-          
+
           # Check for success indicators in output
           if echo "$OUTPUT" | grep -q "TEST_RESULT: SUCCESS"; then
             echo "✅ Verification test passed!"
@@ -381,10 +356,10 @@ jobs:
           name: MsQuic Native v${{ github.event.inputs.package_version }}
           body: |
             MsQuic native libraries packaged for NuGet
-            
+
             **MsQuic Branch:** ${{ github.event.inputs.msquic_branch }}
             **Package Version:** ${{ github.event.inputs.package_version }}${{ github.event.inputs.prerelease_tag && format('-{0}', github.event.inputs.prerelease_tag) || '' }}
-            
+
             **Supported Platforms:**
             - Windows (x64, x86, ARM64)
             - Linux (x64, ARM64)

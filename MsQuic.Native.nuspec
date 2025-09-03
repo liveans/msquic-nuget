@@ -5,8 +5,7 @@
     <version>$version$</version>
     <title>MsQuic Native Libraries</title>
     <authors>Microsoft</authors>
-    <owners>Your Organization</owners>
-    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <requireLicenseAcceptance>true</requireLicenseAcceptance>
     <license type="expression">MIT</license>
     <projectUrl>https://github.com/microsoft/msquic</projectUrl>
     <iconUrl>https://raw.githubusercontent.com/microsoft/msquic/main/docs/images/msquic.png</iconUrl>
@@ -14,24 +13,14 @@
     <releaseNotes>Multi-platform native MsQuic libraries packaged for easy distribution.</releaseNotes>
     <copyright>Copyright (c) Microsoft Corporation</copyright>
     <tags>QUIC MsQuic Native Network Protocol Transport</tags>
-    <repository type="git" url="https://github.com/microsoft/msquic.git" />
-    <dependencies>
-      <group targetFramework=".NETStandard2.0" />
-      <group targetFramework=".NETFramework4.6.2" />
-      <group targetFramework="net6.0" />
-      <group targetFramework="net8.0" />
-      <group targetFramework="net10.0" />
-    </dependencies>
+    <repository type="git" url="https://github.com/microsoft/msquic" />
   </metadata>
   <files>
-    <!-- Build props and targets -->
-    <file src="MsQuic.Native.props" target="build/native" />
-    <file src="MsQuic.Native.targets" target="build/native" />
-    
+
     <!-- macOS ARM64 -->
     <file src="package/runtimes/osx-arm64/native/*.dylib" target="runtimes/osx-arm64/native" />
     <file src="package/runtimes/osx-arm64/native/*.a" target="runtimes/osx-arm64/native" />
-    
+
     <!-- macOS x64 (optional) -->
     <file src="package/runtimes/osx-x64/native/*.dylib" target="runtimes/osx-x64/native" />
     <file src="package/runtimes/osx-x64/native/*.a" target="runtimes/osx-x64/native" />
